@@ -8,10 +8,12 @@ prod_names = []
 prod_prices = []
 prod_prices_sort = []
 
+prods = []
+
 
 def parsing():
     """Получаем количество элементов, в категории"""
-    category_id = '5433'
+    category_id = '5427' # процессоры
     params = {
         'categoryId': category_id,
         'offset': '96',
