@@ -1,28 +1,22 @@
+import math
 import requests
 from pars_setting import cookies, headers
-import os
-import math
 
-prod_ids = []
-prod_names = []
-prod_prices = []
-prod_prices_sort = []
+Products = []
 
-def parsing():
-    """Получаем количество элементов, в категории"""
-    category_id = '5433'
+
+def parsing(cat: int = 5431):
+    """Парсер магазина mvideo.ru по категориям"""
+    _category_id = str(cat)
     params = {
-        'categoryId': category_id,
+        'categoryId': _category_id,
         'offset': '96',
         'limit': '24',
     }
-
-    if not os.path.exists('data'):
-        os.mkdir('data')
-
     session = requests.Session()
     try:
-        response = session.get(url='https://www.mvideo.ru/bff/products/listing', params=params, cookies=cookies, headers=headers).json()
+        response = session.get(url='https://www.mvideo.ru/bff/products/listing', params=params, cookies=cookies,
+                               headers=headers).json()
     except requests.exceptions.TooManyRedirects:
         pass
     finally:
@@ -30,30 +24,28 @@ def parsing():
                                headers=headers).json()
 
     total_items = response.get('body').get('total')
-
     if total_items is None:
         return 'No items'
 
-    """Получаем количество страниц"""
-    pages_count = math.ceil(total_items/int(params['limit']))
-    print(f'Total pages: {pages_count} | Total items: {total_items}')
+    # Get the number of pages
+    pages_count = math.ceil(total_items / int(params['limit']))
+    print(f'Total pages: {pages_count} | Total items: {total_items} in {cat}')
 
-
-    """Пробегаемся по каждой странице и получаем IDники товаров"""
     for i in range(pages_count):
-        offset = 24*i
+        # Get ids
+        offset = 24 * i
         params = {
-            'categoryId': category_id,
+            'categoryId': cat,
             'offset': offset,
             'limit': '24',
         }
         response = session.get('https://www.mvideo.ru/bff/products/listing', params=params, cookies=cookies,
-                         headers=headers).json()
+                               headers=headers).json()
         prod_ids_list = response.get('body').get('products')
         for item in prod_ids_list:
-            prod_ids.append(item)
+            Products.append({'id': item})
 
-        '''Получаем имена'''
+        # Get names
         json_data = {
             'productIds': prod_ids_list,
             'mediaTypes': [
@@ -71,13 +63,17 @@ def parsing():
             'multioffer': False,
         }
         response = session.post('https://www.mvideo.ru/bff/product-details/list', cookies=cookies, headers=headers,
-                                 json=json_data).json()
+                                json=json_data).json()
         prods = response.get('body').get('products')
 
         for descrip in prods:
-            prod_names.append(descrip['name'])
+            _id = descrip['productId']
+            _name = descrip['name']
+            for j in range(len(Products)):
+                if _id == Products[j]['id']:
+                    Products[j]['name'] = _name
 
-        '''Получаем цены'''
+        # Get price
         prod_ids_list_str = ','.join(prod_ids_list)
         params = {
             'productIds': prod_ids_list_str,
@@ -86,37 +82,31 @@ def parsing():
         }
         try:
             response = session.get('https://www.mvideo.ru/bff/products/prices', params=params, cookies=cookies,
-                                headers=headers).json()
+                                   headers=headers).json()
         except requests.exceptions.TooManyRedirects:
             pass
         finally:
             response = session.get('https://www.mvideo.ru/bff/products/prices', params=params, cookies=cookies,
-                                headers=headers).json()
+                                   headers=headers).json()
 
         prods = response.get('body').get('materialPrices')
         for item in prods:
-            dir = {'id': item['productId'],
-                   'price': item['price']['basePrice']}
+            _id = item['productId']
+            _price = item['price']['basePrice']
+            for j in range(len(Products)):
+                if _id == Products[j]['id']:
+                    Products[j]['price'] = _price
 
-            prod_prices.append(dir)
-
-        print(str(i) + "-------------------------------")
-
-def find_price():
-    for j in range(len(prod_ids)):
-        for item in prod_prices:
-            if (item['id'] == prod_ids[j]):
-                prod_prices_sort.append(item['price'])
-                break
+        print(str(i) + " of " + str(pages_count) + " wait...")
 
 
 def printer():
-    for i in range(len(prod_ids)):
-        print(f'id: {prod_ids[i]} name: {prod_names[i]} price: {prod_prices_sort[i]} руб')
+    for i in range(len(Products)):
+        print(f'[{i}] {Products[i]["id"]} {Products[i]["name"]} \t {Products[i]["price"]} руб.')
 
 
 if __name__ == '__main__':
-    parsing()
-    find_price()
+    print(f'Start parse category')
+    parsing(5431)
     printer()
-
+    print('FINISH')
