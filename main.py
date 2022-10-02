@@ -8,6 +8,7 @@ prod_names = []
 prod_prices = []
 prod_prices_sort = []
 
+
 def parsing():
     """Получаем количество элементов, в категории"""
     category_id = '5433'
@@ -101,6 +102,7 @@ def parsing():
             prod_prices.append(dir)
 
         print(str(i) + "-------------------------------")
+
 
 def find_price():
     for j in range(len(prod_ids)):
